@@ -11,10 +11,26 @@
 
 #include <LiquidCrystal.h>
 #include <IRremote.hpp>
+#include <Adafruit_GFX.h>      // Core graphics library
+#include <XTronical_ST7735.h>  // Hardware-specific library
+#include <SPI.h>
+
+// set up pins we are going to use to talk to the screen
+#define TFT_SCLK 13  // SPI clock
+#define TFT_MOSI 11  // SPI Data
+#define TFT_CS 9     // Display enable (Chip select), if not enabled will not talk on SPI bus
+#define TFT_RST -1   // Display reset pin, you can also connect this to the Arduino reset \
+                     // in which case, set this #define pin to -1!
+#define TFT_DC 10    // register select (stands for Data Control perhaps!)
+
+// initialise the routine to talk to this display with these pin connections (as we've missed off
+// TFT_SCLK and TFT_MOSI the routine presumes we are using hardware SPI and internally uses 13 and 11
+Adafruit_ST7735 tft = Adafruit_ST7735(TFT_CS, TFT_DC, TFT_RST);
 
 // initialize the library with the numbers of the interface pins
-LiquidCrystal lcd(6, 7, 8, 9, 10, 11);
-int receiver = 12;  // Signal Pin of IR receiver to Arduino Digital Pin 11
+LiquidCrystal lcd(3, 4, 5, 6, 7, 8);
+
+int receiver = 2;  // Signal Pin of IR receiver to Arduino Digital Pin 5
 char symb1 = 'X', symb2 = 'O';
 static int posx = 0, posy = 0;
 
@@ -47,7 +63,7 @@ void translateIR()  // takes action based on IR code received
   }
   //map the IR code to the remote key
   switch (irrecv.decodedIRData.decodedRawData) {
-    case 0xBA45FF00: Serial.println("POWER"); break;
+    //case 0xBA45FF00: Serial.println("POWER"); break;
     case 0xB946FF00: posy -= 1; break;        // vol+
     case 0xBB44FF00: posx -= 1; break;        //fast back
     case 0xBF40FF00: assigned = true; break;  // play/pause button
@@ -63,11 +79,58 @@ void translateIR()  // takes action based on IR code received
   delay(500);  // Do not get immediate repeat
 }  //END translateIR
 
+void testdrawtext(char *text, uint16_t color) {
+  tft.setCursor(0, 0);
+  tft.setTextColor(color);
+  tft.setTextWrap(true);
+  tft.print(text);
+}
+
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(9600);
-  irrecv.enableIRIn();  // Start the receiver
 
+  // Start the receiver
+  irrecv.enableIRIn();
+
+  //square lcd test
+  tft.init();  // initialize a ST7735S chip,
+
+  // large block of text
+
+  tft.fillScreen(ST7735_BLACK);
+  tft.setTextSize(2);
+  tft.setTextColor(ST7735_WHITE);
+  tft.setRotation(2);
+
+  tft.setCursor(12, 0);
+  tft.print(board[0][0]);
+  tft.print(" | ");
+  tft.print(board[0][1]);
+  tft.print(" | ");
+  tft.print(board[0][2]);
+
+  tft.setCursor(12, 12);
+  tft.print("--|---|--");
+
+  tft.setCursor(12, 24);
+  tft.print(board[1][0]);
+  tft.print(" | ");
+  tft.print(board[1][1]);
+  tft.print(" | ");
+  tft.print(board[1][2]);
+
+  tft.setCursor(12, 36);
+  tft.print("--|---|--");
+
+  tft.setCursor(12, 48);
+  tft.print(board[2][0]);
+  tft.print(" | ");
+  tft.print(board[2][1]);
+  tft.print(" | ");
+  tft.print(board[2][2]);
+
+  //welcome message
   lcd.begin(16, 2);
   lcd.print("Welcome to");
   lcd.setCursor(0, 1);
@@ -78,9 +141,9 @@ void setup() {
   while (true) {
     // pick symbol
     lcd.setCursor(0, 0);
-    lcd.print("Press UP for RED");
+    lcd.print("Press UP for X");
     lcd.setCursor(0, 1);
-    lcd.print("Or DOWN for BLUE");
+    lcd.print("Or DOWN for O");
 
     if (irrecv.decode())  // have we received an IR signal?
     {
@@ -120,34 +183,38 @@ void setup() {
 
 void loop() {  // put your main code here, to run repeatedly:
 
-  //print board
-  Serial.print(" ");
-  Serial.print(board[0][0]);
-  Serial.print(" | ");
-  Serial.print(board[0][1]);
-  Serial.print(" | ");
-  Serial.print(board[0][2]);
-  Serial.println(" ");
+  //print board on square lcd
+  tft.fillScreen(ST7735_BLACK);
+  tft.setTextSize(2);
+  tft.setTextColor(ST7735_WHITE);
+  tft.setRotation(2);
 
-  Serial.println("---|---|---");
+  tft.setCursor(12, 12);
+  tft.print(board[0][0]);
+  tft.print(" | ");
+  tft.print(board[0][1]);
+  tft.print(" | ");
+  tft.print(board[0][2]);
 
-  Serial.print(" ");
-  Serial.print(board[1][0]);
-  Serial.print(" | ");
-  Serial.print(board[1][1]);
-  Serial.print(" | ");
-  Serial.print(board[1][2]);
+  tft.setCursor(12, 24);
+  tft.print("--|---|--");
 
-  Serial.println(" ");
-  Serial.println("---|---|---");
+  tft.setCursor(12, 36);
+  tft.print(board[1][0]);
+  tft.print(" | ");
+  tft.print(board[1][1]);
+  tft.print(" | ");
+  tft.print(board[1][2]);
 
-  Serial.print(" ");
-  Serial.print(board[2][0]);
-  Serial.print(" | ");
-  Serial.print(board[2][1]);
-  Serial.print(" | ");
-  Serial.print(board[2][2]);
-  Serial.println(" ");
+  tft.setCursor(12, 48);
+  tft.print("--|---|--");
+
+  tft.setCursor(12, 60);
+  tft.print(board[2][0]);
+  tft.print(" | ");
+  tft.print(board[2][1]);
+  tft.print(" | ");
+  tft.print(board[2][2]);
 
   // victory conditions
   // horizontal
@@ -275,7 +342,7 @@ void loop() {  // put your main code here, to run repeatedly:
 
       if (assigned == true && board[posy][posx] != ' ') {
         assigned = false;
-        Serial.println("\nSorry, that's not a valid play");
+        lcd.print("\nSorry, that's not a valid play");
 
       } else if (assigned == true) {
         board[posy][posx] = symb1;
@@ -415,22 +482,22 @@ void loop() {  // put your main code here, to run repeatedly:
       } else if (board[1][0] == board[2][0] && board[1][0] == symb2 && board[0][0] == ' ') {
         board[0][0] = symb1;
         break;
-      } else if (board[0][1] == board[1][0] && board[0][0] == symb2 && board[2][0] == ' ') {
+      } else if (board[0][1] == board[1][1] && board[0][1] == symb2 && board[2][1] == ' ') {
         board[2][1] = symb1;
         break;
-      } else if (board[0][1] == board[2][0] && board[0][0] == symb2 && board[1][0] == ' ') {
+      } else if (board[0][1] == board[2][1] && board[0][1] == symb2 && board[1][1] == ' ') {
         board[1][1] = symb1;
         break;
-      } else if (board[1][1] == board[2][0] && board[1][0] == symb2 && board[0][0] == ' ') {
+      } else if (board[1][1] == board[2][1] && board[1][1] == symb2 && board[0][1] == ' ') {
         board[0][1] = symb1;
         break;
-      } else if (board[0][2] == board[1][0] && board[0][0] == symb2 && board[2][0] == ' ') {
+      } else if (board[0][2] == board[1][2] && board[0][2] == symb2 && board[2][2] == ' ') {
         board[2][2] = symb1;
         break;
-      } else if (board[0][2] == board[2][0] && board[0][0] == symb2 && board[1][0] == ' ') {
+      } else if (board[0][2] == board[2][2] && board[0][2] == symb2 && board[1][2] == ' ') {
         board[1][2] = symb1;
         break;
-      } else if (board[1][2] == board[2][0] && board[1][0] == symb2 && board[0][0] == ' ') {
+      } else if (board[1][2] == board[2][2] && board[1][2] == symb2 && board[0][2] == ' ') {
         board[0][2] = symb1;
         break;
       }
