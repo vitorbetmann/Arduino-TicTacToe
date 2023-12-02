@@ -4,6 +4,76 @@
 //well played or bummer messages when the game ends
 //maybe have the player pick a game for 1 or 2 and also have messages for when p1 wins or p2 wins
 
+/* AllProtocolsOnLCD.cpp
+ *
+ * Modified ReceiveDemo.cpp with additional 1602 LCD output.
+ * If debug button is pressed (pin connected to ground) a long output is generated.
+ *
+ *  This file is part of Arduino-IRremote https://github.com/Arduino-IRremote/Arduino-IRremote.
+ *
+ ************************************************************************************
+ * MIT License
+ *
+ * Copyright (c) 2022-2023 Armin Joachimsmeyer
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is furnished
+ * to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+ * PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+ * HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
+ * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE
+ * OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ *
+ ************************************************************************************
+ */
+
+/***************************************************
+  This is a library for the genric 1.8" SPI display.
+
+This library works with the Adafruit 1.8" TFT Breakout w/SD card
+  ----> http://www.adafruit.com/products/358
+The 1.8" TFT shield
+  ----> https://www.adafruit.com/product/802
+The 1.44" TFT breakout
+  ----> https://www.adafruit.com/product/2088
+as well as Adafruit raw 1.8" TFT display
+  ----> http://www.adafruit.com/products/618
+
+  Check out the links above for our tutorials and wiring diagrams
+  These displays use SPI to communicate, 4 or 5 pins are required to
+  interface (RST is optional)
+  Adafruit invests time and resources providing this open source code,
+  please support Adafruit and open-source hardware by purchasing
+  products from Adafruit!
+
+  Written by Limor Fried/Ladyada for Adafruit Industries.
+  MIT license, all text above must be included in any redistribution
+ ****************************************************/
+ 
+ /***************************************************
+  This is our GFX example for the Adafruit ILI9341 Breakout and Shield
+  ----> http://www.adafruit.com/products/1651
+
+  Check out the links above for our tutorials and wiring diagrams
+  These displays use SPI to communicate, 4 or 5 pins are required to
+  interface (RST is optional)
+  Adafruit invests time and resources providing this open source code,
+  please support Adafruit and open-source hardware by purchasing
+  products from Adafruit!
+
+  Written by Limor Fried/Ladyada for Adafruit Industries.
+  MIT license, all text above must be included in any redistribution
+ ****************************************************/
+
 #include <LiquidCrystal.h>
 #include <IRremote.hpp>
 #include <Adafruit_GFX.h>      // Core graphics library
