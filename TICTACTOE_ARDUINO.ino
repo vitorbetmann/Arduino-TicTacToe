@@ -1,13 +1,8 @@
 //missing features
-//to be able to turn off or on by pressing the power button
 //to ask if the player wants to play again
-//to play trying to win, prevent winning, and the turns 2-3 plays
-//to be able to pick colour using the same buttons as to select a position
-//the led's gotta blink to indicate which position the player's "cursor" is at
-//ai's gotta be more friendly, by taking some time to play rather than playing immediately
+//to play preventing player win, and OTHER plays
 //well played or bummer messages when the game ends
 //maybe have the player pick a game for 1 or 2 and also have messages for when p1 wins or p2 wins
-//perhaps ask players name
 
 #include <LiquidCrystal.h>
 #include <IRremote.hpp>
@@ -79,16 +74,8 @@ void translateIR()  // takes action based on IR code received
   delay(500);  // Do not get immediate repeat
 }  //END translateIR
 
-void testdrawtext(char *text, uint16_t color) {
-  tft.setCursor(0, 0);
-  tft.setTextColor(color);
-  tft.setTextWrap(true);
-  tft.print(text);
-}
-
 void setup() {
   // put your setup code here, to run once:
-  Serial.begin(9600);
 
   // Start the receiver
   irrecv.enableIRIn();
@@ -96,94 +83,7 @@ void setup() {
   //square lcd test
   tft.init();  // initialize a ST7735S chip,
 
-  // large block of text
-
-  tft.fillScreen(ST7735_BLACK);
-  tft.setTextSize(2);
-  tft.setTextColor(ST7735_WHITE);
-  tft.setRotation(2);
-
-  tft.setCursor(12, 0);
-  tft.print(board[0][0]);
-  tft.print(" | ");
-  tft.print(board[0][1]);
-  tft.print(" | ");
-  tft.print(board[0][2]);
-
-  tft.setCursor(12, 12);
-  tft.print("--|---|--");
-
-  tft.setCursor(12, 24);
-  tft.print(board[1][0]);
-  tft.print(" | ");
-  tft.print(board[1][1]);
-  tft.print(" | ");
-  tft.print(board[1][2]);
-
-  tft.setCursor(12, 36);
-  tft.print("--|---|--");
-
-  tft.setCursor(12, 48);
-  tft.print(board[2][0]);
-  tft.print(" | ");
-  tft.print(board[2][1]);
-  tft.print(" | ");
-  tft.print(board[2][2]);
-
-  //welcome message
-  lcd.begin(16, 2);
-  lcd.print("Welcome to");
-  lcd.setCursor(0, 1);
-  lcd.print("TIC-TAC-TOE!");
-  delay(3000);
-  lcd.clear();
-
-  while (true) {
-    // pick symbol
-    lcd.setCursor(0, 0);
-    lcd.print("Press UP for X");
-    lcd.setCursor(0, 1);
-    lcd.print("Or DOWN for O");
-
-    if (irrecv.decode())  // have we received an IR signal?
-    {
-      translateIR();
-      irrecv.resume();  // receive the next value
-      break;
-    }
-  }
-  lcd.clear();
-
-  Serial.println(symb1);
-
-  // determines first player
-  randomSeed(analogRead(A0));
-  playerNum = random(1, 3);
-  Serial.println(playerNum);
-
-  if (playerNum == 2) {
-    if (symb1 == 'X') symb1 = 'O';
-    else if (symb1 == 'O') symb1 = 'X';
-    lcd.setCursor(0, 0);
-    lcd.print("You play SECOND");
-    lcd.setCursor(0, 1);
-    lcd.print("Good Luck!");
-    delay(3000);
-    lcd.clear();
-
-  } else {
-    lcd.setCursor(0, 0);
-    lcd.print("You play FIRST");
-    lcd.setCursor(0, 1);
-    lcd.print("Good Luck!");
-    delay(3000);
-    lcd.clear();
-  }
-}
-
-void loop() {  // put your main code here, to run repeatedly:
-
-  //print board on square lcd
+  //print board on lcd square screen
   tft.fillScreen(ST7735_BLACK);
   tft.setTextSize(2);
   tft.setTextColor(ST7735_WHITE);
@@ -214,6 +114,90 @@ void loop() {  // put your main code here, to run repeatedly:
   tft.print(" | ");
   tft.print(board[2][1]);
   tft.print(" | ");
+  tft.print(board[2][2]);
+
+  //welcome message
+  lcd.begin(16, 2);
+  lcd.print("   Welcome to   ");
+  lcd.setCursor(0, 1);
+  lcd.print("  TIC-TAC-TOE!");
+  delay(3000);
+  lcd.clear();
+
+  while (true) {
+    // pick symbol
+    lcd.setCursor(0, 0);
+    lcd.print("Press UP for X");
+    lcd.setCursor(0, 1);
+    lcd.print(" Or DOWN for O");
+
+    if (irrecv.decode())  // have we received an IR signal?
+    {
+      translateIR();
+      irrecv.resume();  // receive the next value
+      break;
+    }
+  }
+  lcd.clear();
+
+
+  // determines first player
+  randomSeed(analogRead(A0));
+  playerNum = random(1, 3);
+
+  if (playerNum == 2) {
+    if (symb1 == 'X') symb1 = 'O';
+    else if (symb1 == 'O') symb1 = 'X';
+    lcd.setCursor(0, 0);
+    lcd.print("You play SECOND");
+    lcd.setCursor(0, 1);
+    lcd.print("Good Luck!");
+    delay(2500);
+
+  } else {
+    lcd.setCursor(0, 0);
+    lcd.print("You play FIRST");
+    lcd.setCursor(0, 1);
+    lcd.print("Good Luck!");
+    delay(2500);
+  }
+}
+
+void loop() {  // put your main code here, to run repeatedly:
+
+  lcd.clear();
+
+  //print board on square lcd
+  tft.fillScreen(ST7735_BLACK);
+  tft.setTextSize(2);
+  tft.setTextColor(ST7735_WHITE);
+  tft.setRotation(2);
+
+  tft.setCursor(12, 12);
+  tft.print(board[0][0]);
+  tft.print(" |");
+  tft.print(board[0][1]);
+  tft.print("  |");
+  tft.print(board[0][2]);
+
+  tft.setCursor(12, 24);
+  tft.print("--|---|--");
+
+  tft.setCursor(12, 36);
+  tft.print(board[1][0]);
+  tft.print(" |");
+  tft.print(board[1][1]);
+  tft.print("  |");
+  tft.print(board[1][2]);
+
+  tft.setCursor(12, 48);
+  tft.print("--|---|--");
+
+  tft.setCursor(12, 60);
+  tft.print(board[2][0]);
+  tft.print(" |");
+  tft.print(board[2][1]);
+  tft.print("  |");
   tft.print(board[2][2]);
 
   // victory conditions
@@ -315,14 +299,17 @@ void loop() {  // put your main code here, to run repeatedly:
     }
   }
 
-  Serial.println();
-  Serial.print("It's ");
-  Serial.print(symb1);
-  Serial.println("'s turn.");
-  Serial.println();
-
   // if player turn
   if ((playerNum == 1 && turn % 2 != 0) || (playerNum == 2 && turn % 2 == 0)) {
+    lcd.clear();
+    lcd.print(" Make your play");
+    lcd.setCursor(0, 1);
+    lcd.print("(Pos = RED symb)");
+
+    //print cursor
+    tft.setTextColor(ST7735_RED);
+    tft.setCursor(24 + (posx * 42), 12 + (posy * 24));
+    tft.print(symb1);
 
     assigned = false;
     // check for valid play
@@ -336,27 +323,87 @@ void loop() {  // put your main code here, to run repeatedly:
         if (posx < 0) posx = 2;
         if (posy > 2) posy = 0;
         if (posy < 0) posy = 2;
-        Serial.println(posy);
-        Serial.println(posx);
+
+        //print board on square lcd
+        tft.fillScreen(ST7735_BLACK);
+        tft.setTextSize(2);
+        tft.setTextColor(ST7735_WHITE);
+        tft.setRotation(2);
+
+        tft.setCursor(12, 12);
+        tft.print(board[0][0]);
+        tft.print(" |");
+        tft.print(board[0][1]);
+        tft.print("  |");
+        tft.print(board[0][2]);
+
+        tft.setCursor(12, 24);
+        tft.print("--|---|--");
+
+        tft.setCursor(12, 36);
+        tft.print(board[1][0]);
+        tft.print(" |");
+        tft.print(board[1][1]);
+        tft.print("  |");
+        tft.print(board[1][2]);
+
+        tft.setCursor(12, 48);
+        tft.print("--|---|--");
+
+        tft.setCursor(12, 60);
+        tft.print(board[2][0]);
+        tft.print(" |");
+        tft.print(board[2][1]);
+        tft.print("  |");
+        tft.print(board[2][2]);
+
+        //print cursor
+        tft.setTextColor(ST7735_RED);
+        tft.setCursor(24 + (posx * 42), 12 + (posy * 24));
+        tft.print(symb1);
       }
 
       if (assigned == true && board[posy][posx] != ' ') {
         assigned = false;
-        lcd.print("\nSorry, that's not a valid play");
+        lcd.clear();
+        lcd.print(" Not Valid play");
+        lcd.setCursor(0, 1);
+        lcd.print("Make another one");
 
       } else if (assigned == true) {
         board[posy][posx] = symb1;
       }
     }
+    lcd.clear();
   }
 
   // if ai turn
   else {
+    //variables
     bool found = false;
 
-    while (!found) {
-      //variables
+    //ai personality
+    if (turn <= 5) {
+      lcd.clear();
+      lcd.print("Thinking...");
+      delay(2000 / turn);
+    } else if (turn <= 7) {
+      lcd.clear();
+      lcd.print("Not bad...");
+      delay(1500);
+    } else if (turn == 8) {
+      lcd.clear();
+      lcd.print("I won't lose");
+      delay(2000);
+    } else {
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print("Let's end this");
+      lcd.setCursor(0, 1);
+      delay(2000);
+    }
 
+    while (!found) {
       // try to win horizontal
       if (board[0][0] == board[0][1] && board[0][0] == symb1 && board[0][2] == ' ') {
         board[0][2] = symb1;
@@ -397,22 +444,22 @@ void loop() {  // put your main code here, to run repeatedly:
       } else if (board[1][0] == board[2][0] && board[1][0] == symb1 && board[0][0] == ' ') {
         board[0][0] = symb1;
         break;
-      } else if (board[0][1] == board[1][0] && board[0][0] == symb1 && board[2][0] == ' ') {
+      } else if (board[0][1] == board[1][1] && board[0][1] == symb1 && board[2][1] == ' ') {
         board[2][1] = symb1;
         break;
-      } else if (board[0][1] == board[2][0] && board[0][0] == symb1 && board[1][0] == ' ') {
+      } else if (board[0][1] == board[2][1] && board[0][1] == symb1 && board[1][1] == ' ') {
         board[1][1] = symb1;
         break;
-      } else if (board[1][1] == board[2][0] && board[1][0] == symb1 && board[0][0] == ' ') {
+      } else if (board[1][1] == board[2][1] && board[1][1] == symb1 && board[0][1] == ' ') {
         board[0][1] = symb1;
         break;
-      } else if (board[0][2] == board[1][0] && board[0][0] == symb1 && board[2][0] == ' ') {
+      } else if (board[0][2] == board[1][2] && board[0][2] == symb1 && board[2][2] == ' ') {
         board[2][2] = symb1;
         break;
-      } else if (board[0][2] == board[2][0] && board[0][0] == symb1 && board[1][0] == ' ') {
+      } else if (board[0][2] == board[2][2] && board[0][2] == symb1 && board[1][2] == ' ') {
         board[1][2] = symb1;
         break;
-      } else if (board[1][2] == board[2][0] && board[1][0] == symb1 && board[0][0] == ' ') {
+      } else if (board[1][2] == board[2][2] && board[1][2] == symb1 && board[0][2] == ' ') {
         board[0][2] = symb1;
         break;
       }
@@ -442,7 +489,7 @@ void loop() {  // put your main code here, to run repeatedly:
         break;
       }
 
-      // prevent player win horizontal
+      // prevent player win horizontal check this
       else if (board[0][0] == board[0][1] && board[0][0] == symb2 && board[0][2] == ' ') {
         board[0][2] = symb1;
         break;
@@ -472,7 +519,7 @@ void loop() {  // put your main code here, to run repeatedly:
         break;
       }
 
-      // prevent player win vertical
+      // prevent player win vertical check this
       else if (board[0][0] == board[1][0] && board[0][0] == symb2 && board[2][0] == ' ') {
         board[2][0] = symb1;
         break;
@@ -503,7 +550,7 @@ void loop() {  // put your main code here, to run repeatedly:
       }
 
       // prevent player win diagonal
-      // upwards
+      // upwards check this
       else if (board[0][0] == board[1][1] && board[0][0] == symb2 && board[2][2] == ' ') {
         board[2][2] = symb1;
         break;
@@ -515,7 +562,7 @@ void loop() {  // put your main code here, to run repeatedly:
         break;
       }
 
-      // downwards
+      // downwards check this
       else if (board[0][2] == board[1][1] && board[0][2] == symb2 && board[2][0] == ' ') {
         board[2][0] = symb1;
         break;
@@ -527,7 +574,7 @@ void loop() {  // put your main code here, to run repeatedly:
         break;
       }
 
-      //other plays
+      //other plays check this
       else {
         for (int i = 0; i < sizeof(board) && !found; i++) {
           for (int j = 0; j < sizeof(board[i]) && !found; j++) {
@@ -536,12 +583,10 @@ void loop() {  // put your main code here, to run repeatedly:
             else {
               board[i][j] = symb1;
               found = true;
-              break;
             }
           }
         }
       }
-      if (found = true) break;
     }
   }
   turn++;
