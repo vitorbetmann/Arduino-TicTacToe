@@ -265,7 +265,16 @@ void loop() {  // put your main code here, to run repeatedly:
   tft.print("  |");
   tft.print(board[2][2]);
 
-  static int turnDiff = 0;
+  static int turnDiff = 0;  //had to create this weird counter to keep track of the difference
+  //between the first and last rounds, as when i tried resenting the turn to 1 before starting
+  //a new match, the arduino just set a random number to it, like 8225.
+  //The only way i found it to work was to never reset the turn counter and instead create this turnDiff variable
+  //I also tried using a loop to check if every space in the board was filled, but same problem happened and
+  //instead of giving me a return value of true if all 9 spots were full, it would set the counter to
+  //64, and always return false...
+  //Anyway, I know this is not practical or elegant, but it works... For a better looking code, check
+  //the my tic-tac-toe in java repository
+
   bool boardFull = (turn - turnDiff) == 10;
 
   if (boardFull && !isVictory(board)) isDraw = true;
