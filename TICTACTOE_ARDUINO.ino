@@ -1,8 +1,8 @@
 //missing features
-//to ask if the player wants to play again
-//to play preventing player win, and OTHER plays
-//well played or bummer messages when the game ends
-//maybe have the player pick a game for 1 or 2 and also have messages for when p1 wins or p2 wins
+//turn win conditions into method
+//for ai to play OTHER plays
+//victory on last turn counts as draw
+//maybe have the player pick a game for 1 or 2 players and also have messages for when p1 wins or p2 wins
 
 /* AllProtocolsOnLCD.cpp
  *
@@ -58,8 +58,8 @@ as well as Adafruit raw 1.8" TFT display
   Written by Limor Fried/Ladyada for Adafruit Industries.
   MIT license, all text above must be included in any redistribution
  ****************************************************/
- 
- /***************************************************
+
+/***************************************************
   This is our GFX example for the Adafruit ILI9341 Breakout and Shield
   ----> http://www.adafruit.com/products/1651
 
@@ -74,42 +74,36 @@ as well as Adafruit raw 1.8" TFT display
   MIT license, all text above must be included in any redistribution
  ****************************************************/
 
-#include <LiquidCrystal.h>
-#include <IRremote.hpp>
+#include <LiquidCrystal.h>     //16 x 2  LCD
+#include <IRremote.hpp>        //remote control
 #include <Adafruit_GFX.h>      // Core graphics library
 #include <XTronical_ST7735.h>  // Hardware-specific library
 #include <SPI.h>
 
-// set up pins we are going to use to talk to the screen
-#define TFT_SCLK 13  // SPI clock
-#define TFT_MOSI 11  // SPI Data
-#define TFT_CS 9     // Display enable (Chip select), if not enabled will not talk on SPI bus
-#define TFT_RST -1   // Display reset pin, you can also connect this to the Arduino reset \
-                     // in which case, set this #define pin to -1!
-#define TFT_DC 10    // register select (stands for Data Control perhaps!)
-
-// initialise the routine to talk to this display with these pin connections (as we've missed off
-// TFT_SCLK and TFT_MOSI the routine presumes we are using hardware SPI and internally uses 13 and 11
-Adafruit_ST7735 tft = Adafruit_ST7735(TFT_CS, TFT_DC, TFT_RST);
+//set pins
+#define receiver 2  // Signal Pin of IR receiver
 
 // initialize the library with the numbers of the interface pins
 LiquidCrystal lcd(3, 4, 5, 6, 7, 8);
 
-int receiver = 2;  // Signal Pin of IR receiver to Arduino Digital Pin 5
-char symb1 = 'X', symb2 = 'O';
-static int posx = 0, posy = 0;
+// set up pins we are going to use to talk to the screen
+#define TFT_RST -1  // Display reset pin (-1 if connected to reset)
+#define TFT_DC 10   // register select (stands for Data Control perhaps!)
+#define TFT_CS 9    // Display enable
+
+//Class below presumes we are using hardware SPI and internally uses:
+// SPI clock to pin 13
+// SPI Data to pin 11
+Adafruit_ST7735 tft = Adafruit_ST7735(TFT_CS, TFT_DC, TFT_RST);
 
 //variables
+bool assigned = false;
 int turn = 1;
-bool draw = false, assigned = false;
-int aiPlay[2];
 long playerNum;
-char blank = ' ';
+char symb1 = '$', symb2 = 'O';
+static int posx = 0, posy = 0;
 
-// board array
-char board[3][3] = { { ' ', ' ', ' ' }, { ' ', ' ', ' ' }, { ' ', ' ', ' ' } };
-
-/*-----( Declare objects )-----*/
+//Declare objects
 IRrecv irrecv(receiver);  // create instance of 'irrecv'
 //vairable uses to store the last decodedRawData
 uint32_t last_decodedRawData = 0;
@@ -129,65 +123,54 @@ void translateIR()  // takes action based on IR code received
   //map the IR code to the remote key
   switch (irrecv.decodedIRData.decodedRawData) {
     //case 0xBA45FF00: Serial.println("POWER"); break;
-    case 0xB946FF00: posy -= 1; break;        // vol+
-    case 0xBB44FF00: posx -= 1; break;        //fast back
-    case 0xBF40FF00: assigned = true; break;  // play/pause button
-    case 0xBC43FF00: posx += 1; break;        //fast forward
-    case 0xF807FF00: symb1 = 'O'; break;      //donw arrow
-    case 0xEA15FF00: posy += 1; break;        // vol-
-    case 0xF609FF00: symb1 = 'X'; break;      //up arrow
+    case 0xB946FF00: posy -= 1; break;        // vol+                 moves cursor up
+    case 0xBB44FF00: posx -= 1; break;        //fast back             moves cursor left
+    case 0xBF40FF00: assigned = true; break;  // play/pause button    confirms play
+    case 0xBC43FF00: posx += 1; break;        //fast forward          moves cursor right
+    case 0xF807FF00: symb1 = 'O'; break;      //donw arrow            picks symbol
+    case 0xEA15FF00: posy += 1; break;        // vol-                 moves cursor down
+    case 0xF609FF00: symb1 = 'X'; break;      //up arrow              picks symbol
     default:
-      Serial.println(" other button   ");
+      lcd.print("Invalid button");
   }  // End Case
   //store the last decodedRawData
   last_decodedRawData = irrecv.decodedIRData.decodedRawData;
   delay(500);  // Do not get immediate repeat
 }  //END translateIR
 
+////////////////////////////////////
 void setup() {
-  // put your setup code here, to run once:
+  Serial.begin(9600);
 
-  // Start the receiver
-  irrecv.enableIRIn();
+  // Start
+  irrecv.enableIRIn();  //the receiver
+  tft.init();           //the ST7735S chip (128x128 lcd)
+  lcd.begin(16, 2);     //the 16x2 lcd
 
-  //square lcd test
-  tft.init();  // initialize a ST7735S chip,
 
-  //print board on lcd square screen
+  //set configurations for lcd screen
   tft.fillScreen(ST7735_BLACK);
   tft.setTextSize(2);
   tft.setTextColor(ST7735_WHITE);
-  tft.setRotation(2);
+  tft.setRotation(2);  //the way I assembled it, the lcd is upside down
 
+  // //draw board
   tft.setCursor(12, 12);
-  tft.print(board[0][0]);
-  tft.print(" | ");
-  tft.print(board[0][1]);
-  tft.print(" | ");
-  tft.print(board[0][2]);
+  tft.print("  |   |  ");
 
   tft.setCursor(12, 24);
   tft.print("--|---|--");
 
   tft.setCursor(12, 36);
-  tft.print(board[1][0]);
-  tft.print(" | ");
-  tft.print(board[1][1]);
-  tft.print(" | ");
-  tft.print(board[1][2]);
+  tft.print("  |   |  ");
 
   tft.setCursor(12, 48);
   tft.print("--|---|--");
 
   tft.setCursor(12, 60);
-  tft.print(board[2][0]);
-  tft.print(" | ");
-  tft.print(board[2][1]);
-  tft.print(" | ");
-  tft.print(board[2][2]);
+  tft.print("  |   |  ");
 
   //welcome message
-  lcd.begin(16, 2);
   lcd.print("   Welcome to   ");
   lcd.setCursor(0, 1);
   lcd.print("  TIC-TAC-TOE!");
@@ -205,7 +188,8 @@ void setup() {
     {
       translateIR();
       irrecv.resume();  // receive the next value
-      break;
+      if (symb1 != '$')
+        break;
     }
   }
   lcd.clear();
@@ -234,6 +218,17 @@ void setup() {
 }
 
 void loop() {  // put your main code here, to run repeatedly:
+  Serial.print("turn ");
+  Serial.println(turn);
+
+  //variables
+  bool playerTurn = (playerNum == 1 && turn % 2 != 0) || (playerNum == 2 && turn % 2 == 0);
+  static int playerScore = 0, aiScore = 0;
+  int count = 0;
+  bool isDraw = false;
+
+  //board array
+  static char board[3][3] = { { ' ', ' ', ' ' }, { ' ', ' ', ' ' }, { ' ', ' ', ' ' } };
 
   lcd.clear();
 
@@ -270,94 +265,121 @@ void loop() {  // put your main code here, to run repeatedly:
   tft.print("  |");
   tft.print(board[2][2]);
 
-  // victory conditions
-  // horizontal
-  if (board[0][0] != ' ' && board[0][0] == board[0][1] && board[0][1] == board[0][2]) {
-    lcd.clear();
-    lcd.setCursor(0, 0);
-    lcd.print(symb1);
-    lcd.print("  Won the game!");
-    lcd.setCursor(0, 1);
-    lcd.print("See you around");
-    delay(100000);  ///////////////////////////fix those
-  }
-  if ((board[1][0] == 'X' || board[1][0] == 'O') && board[1][0] == board[1][1] && board[1][1] == board[1][2]) {
-    lcd.clear();
-    lcd.setCursor(0, 0);
-    lcd.print(symb1);
-    lcd.print("  Won the game!");
-    lcd.setCursor(0, 1);
-    lcd.print("See you around");
-    delay(100000);  ///////////////////////////fix those
-  }
-  if (board[2][1] != ' ' && board[2][0] == board[2][1] && board[2][1] == board[2][2]) {
-    lcd.clear();
-    lcd.setCursor(0, 0);
-    lcd.print(symb1);
-    lcd.print("  Won the game!");
-    lcd.setCursor(0, 1);
-    lcd.print("See you around");
-    delay(100000);  ///////////////////////////fix those
-  }
-  // vertical
-  if (board[0][0] != ' ' && board[0][0] == board[1][0] && board[1][0] == board[2][0]) {
-    lcd.clear();
-    lcd.setCursor(0, 0);
-    lcd.print(symb1);
-    lcd.print("  Won the game!");
-    lcd.setCursor(0, 1);
-    lcd.print("See you around");
-    delay(100000);  ///////////////////////////fix those
-  }
-  if (board[0][1] != ' ' && board[0][1] == board[1][1] && board[1][1] == board[2][1]) {
-    lcd.clear();
-    lcd.setCursor(0, 0);
-    lcd.print(symb1);
-    lcd.print("  Won the game!");
-    lcd.setCursor(0, 1);
-    lcd.print("See you around");
-    delay(100000);  ///////////////////////////fix those
-  }
-  if ((board[0][2] == 'X' || board[0][2] == 'O') && board[0][2] == board[1][2] && board[1][2] == board[2][2]) {
-    lcd.clear();
-    lcd.setCursor(0, 0);
-    lcd.print(symb1);
-    lcd.print("  Won the game!");
-    lcd.setCursor(0, 1);
-    lcd.print("See you around");
-    delay(100000);  ///////////////////////////fix those
-  }
-  // diagonal
-  if (board[0][0] != ' ' && board[0][0] == board[1][1] && board[1][1] == board[2][2]) {
-    lcd.clear();
-    lcd.setCursor(0, 0);
-    lcd.print(symb1);
-    lcd.print("  Won the game!");
-    lcd.setCursor(0, 1);
-    lcd.print("See you around");
-    delay(100000);  ///////////////////////////fix those
-  }
-  if (board[2][0] != ' ' && board[2][0] == board[1][1] && board[1][1] == board[0][2]) {
-    lcd.clear();
-    lcd.setCursor(0, 0);
-    lcd.print(symb1);
-    lcd.print("  Won the game!");
-    lcd.setCursor(0, 1);
-    lcd.print("See you around");
-    delay(100000);  ///////////////////////////fix those
-  };
+  static int turnDiff = 0;
+  bool boardFull = (turn - turnDiff) == 10;
 
-  // draw condition
-  if (turn == 10) {
-    draw = true;
+  if (boardFull && !isVictory(board)) isDraw = true;
+
+  Serial.println(turnDiff);
+  Serial.println(boardFull);
+  Serial.println(isVictory(board));
+  Serial.println(isDraw);
+
+  if (isVictory(board) || isDraw) {
+
+    turnDiff = turn - 1;
+    if (isDraw) {
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print("Ops, it's a draw");
+
+    } else {
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      if (!playerTurn) {  //i.e. if last turn was player's
+        playerScore++;
+        lcd.print("VICTORY IS YOURS");
+      } else {
+        aiScore++;
+        lcd.print("Oh no! You lost");
+      }
+    }
+
+    //print scores
+    lcd.setCursor(0, 1);
+    lcd.print(" You:");
+    lcd.print(playerScore);
+    lcd.print("  -  AI:");
+    lcd.print(aiScore);
+    delay(5000);
+
     lcd.clear();
     lcd.setCursor(0, 0);
-    lcd.print("Ops, it's a draw");
+    lcd.print("Starting another");
     lcd.setCursor(0, 1);
-    lcd.print("See you around");
-    delay(100000);  ///////////////////////////fix those
-  }
+    lcd.print("game in: ");
 
+    lcd.print(3);
+    delay(1000);
+
+    lcd.setCursor(9, 1);
+    lcd.print(2);
+    delay(1000);
+
+    lcd.setCursor(9, 1);
+    lcd.print(1);
+    delay(1000);
+
+    //reset turn counter
+    Serial.print("turn ");
+    Serial.println(turn);
+
+    lcd.clear();
+    if (!playerTurn) {
+      lcd.setCursor(0, 0);
+      lcd.print("You play SECOND");
+      lcd.setCursor(0, 1);
+      lcd.print("Good Luck!");
+      delay(2500);
+
+    } else {
+      lcd.setCursor(0, 0);
+      lcd.print("You play FIRST");
+      lcd.setCursor(0, 1);
+      lcd.print("Good Luck!");
+      delay(2500);
+    }
+
+    //reset board
+    for (int i = 0; i < sizeof(board); i++) {
+      for (int j = 0; j < sizeof(board); j++) {
+        board[i][j] = ' ';
+      }
+    }
+
+    //print new empty board
+    tft.fillScreen(ST7735_BLACK);
+    tft.setTextSize(2);
+    tft.setTextColor(ST7735_WHITE);
+    tft.setRotation(2);
+
+    tft.setCursor(12, 12);
+    tft.print(board[0][0]);
+    tft.print(" |");
+    tft.print(board[0][1]);
+    tft.print("  |");
+    tft.print(board[0][2]);
+
+    tft.setCursor(12, 24);
+    tft.print("--|---|--");
+
+    tft.setCursor(12, 36);
+    tft.print(board[1][0]);
+    tft.print(" |");
+    tft.print(board[1][1]);
+    tft.print("  |");
+    tft.print(board[1][2]);
+
+    tft.setCursor(12, 48);
+    tft.print("--|---|--");
+
+    tft.setCursor(12, 60);
+    tft.print(board[2][0]);
+    tft.print(" |");
+    tft.print(board[2][1]);
+    tft.print("  |");
+    tft.print(board[2][2]);
+  }
 
   if (turn != 1) {
     if (symb1 == 'X') {
@@ -369,36 +391,52 @@ void loop() {  // put your main code here, to run repeatedly:
     }
   }
 
-  // if player turn
-  if ((playerNum == 1 && turn % 2 != 0) || (playerNum == 2 && turn % 2 == 0)) {
+  //check if player turn
+  if (playerTurn) {
+    //variables
+    assigned = false;
+
+    //msg to player 16x2 lcd
     lcd.clear();
     lcd.print(" Make your play");
     lcd.setCursor(0, 1);
-    lcd.print("(Pos = RED symb)");
+    lcd.print(" (RED = cursor)");
 
-    //print cursor
+    //print cursor 128x128 lcd
     tft.setTextColor(ST7735_RED);
     tft.setCursor(24 + (posx * 42), 12 + (posy * 24));
     tft.print(symb1);
 
-    assigned = false;
     // check for valid play
     while (!assigned) {
+
+      static bool isRed = false;
+      if (!isRed) {
+        tft.setTextColor(ST7735_RED);
+        isRed = true;
+      } else {
+        tft.setTextColor(ST7735_BLACK);
+        isRed = false;
+      }
+      delay(250);
+
+      tft.setCursor(24 + (posx * 42), 12 + (posy * 24));
+      tft.print(symb1);
 
       if (irrecv.decode())  // have we received an IR signal?
       {
         translateIR();
-        irrecv.resume();  // receive the next value
-        if (posx > 2) posx = 0;
-        if (posx < 0) posx = 2;
-        if (posy > 2) posy = 0;
-        if (posy < 0) posy = 2;
+        irrecv.resume();         // receive the next value
+        if (posx > 2) posx = 0;  //if player goes out of
+        if (posx < 0) posx = 2;  //bounds, the cursor loops
+        if (posy > 2) posy = 0;  //back to the beginning of
+        if (posy < 0) posy = 2;  //line or column
 
-        //print board on square lcd
+        //print board on 128x128 lcd so that when player moves cursor,
+        //the "background" stays the same, but the previous cursor is deleted
+        //and a new one in a new position is printed
         tft.fillScreen(ST7735_BLACK);
-        tft.setTextSize(2);
         tft.setTextColor(ST7735_WHITE);
-        tft.setRotation(2);
 
         tft.setCursor(12, 12);
         tft.print(board[0][0]);
@@ -427,13 +465,14 @@ void loop() {  // put your main code here, to run repeatedly:
         tft.print("  |");
         tft.print(board[2][2]);
 
-        //print cursor
+        //print cursor over previous board
         tft.setTextColor(ST7735_RED);
         tft.setCursor(24 + (posx * 42), 12 + (posy * 24));
         tft.print(symb1);
+        delay(500);
       }
 
-      if (assigned == true && board[posy][posx] != ' ') {
+      if (assigned == true && board[posy][posx] != ' ') {  //when player presses play/pause button, assigned = true
         assigned = false;
         lcd.clear();
         lcd.print(" Not Valid play");
@@ -447,28 +486,28 @@ void loop() {  // put your main code here, to run repeatedly:
     lcd.clear();
   }
 
-  // if ai turn
+  // if AI turn
   else {
     //variables
     bool found = false;
 
-    //ai personality
-    if (turn <= 5) {
+    //message to player (ai personality)
+    if (turn % 2 == 0) {
       lcd.clear();
       lcd.print("Thinking...");
-      delay(2000 / turn);
-    } else if (turn <= 7) {
+      delay(1500 / turn);
+    } else if (turn % 3 == 0) {
       lcd.clear();
       lcd.print("Not bad...");
       delay(1500);
-    } else if (turn == 8) {
+    } else if (turn % 5 == 0) {
       lcd.clear();
       lcd.print("I won't lose");
       delay(2000);
     } else {
       lcd.clear();
       lcd.setCursor(0, 0);
-      lcd.print("Let's end this");
+      lcd.print("Humm...");
       lcd.setCursor(0, 1);
       delay(2000);
     }
@@ -559,7 +598,7 @@ void loop() {  // put your main code here, to run repeatedly:
         break;
       }
 
-      // prevent player win horizontal check this
+      // prevent player win horizontal
       else if (board[0][0] == board[0][1] && board[0][0] == symb2 && board[0][2] == ' ') {
         board[0][2] = symb1;
         break;
@@ -584,12 +623,12 @@ void loop() {  // put your main code here, to run repeatedly:
       } else if (board[2][0] == board[2][2] && board[2][0] == symb2 && board[2][1] == ' ') {
         board[2][1] = symb1;
         break;
-      } else if (board[2][1] == board[2][2] && board[2][1] == symb1 && board[2][0] == ' ') {
+      } else if (board[2][1] == board[2][2] && board[2][1] == symb2 && board[2][0] == ' ') {
         board[2][0] = symb1;
         break;
       }
 
-      // prevent player win vertical check this
+      // prevent player win vertical
       else if (board[0][0] == board[1][0] && board[0][0] == symb2 && board[2][0] == ' ') {
         board[2][0] = symb1;
         break;
@@ -620,7 +659,7 @@ void loop() {  // put your main code here, to run repeatedly:
       }
 
       // prevent player win diagonal
-      // upwards check this
+      // downward
       else if (board[0][0] == board[1][1] && board[0][0] == symb2 && board[2][2] == ' ') {
         board[2][2] = symb1;
         break;
@@ -632,7 +671,7 @@ void loop() {  // put your main code here, to run repeatedly:
         break;
       }
 
-      // downwards check this
+      // upward
       else if (board[0][2] == board[1][1] && board[0][2] == symb2 && board[2][0] == ' ') {
         board[2][0] = symb1;
         break;
@@ -645,19 +684,191 @@ void loop() {  // put your main code here, to run repeatedly:
       }
 
       //other plays check this
-      else {
-        for (int i = 0; i < sizeof(board) && !found; i++) {
-          for (int j = 0; j < sizeof(board[i]) && !found; j++) {
-            if (board[i][j] != ' ')
-              continue;
-            else {
-              board[i][j] = symb1;
+      //check corners to win next turn
+      else if (board[0][1] == symb1) {
+        if (board[1][0] == symb1 && board[0][0] == ' ' && board[0][2] == ' ' && board[2][0] == ' ') {
+          board[0][0] = symb1;
+          break;
+        }
+
+        if (board[1][2] == symb1 && board[0][2] == ' ' && board[0][0] == ' ' && board[2][2] == ' ') {
+          board[0][2] = symb1;
+          break;
+        }
+      }
+
+      else if (board[2][1] == symb1) {
+        if (board[1][0] == symb1 && board[2][0] == ' ' && board[0][0] == ' ' && board[2][2] == ' ') {
+          board[2][0] = symb1;
+          break;
+        }
+
+        if (board[1][2] == symb1 && board[2][2] == ' ' && board[0][2] == ' ' && board[2][0] == ' ') {
+          board[2][2] = symb1;
+          break;
+        }
+      }
+
+      // if middle empty, check for wins on next turn
+      else if (board[1][1] == ' ') {
+        if ((board[0][0] == symb1 && board[0][1] == symb1 && board[2][2] == ' ' && board[2][1] == ' ')
+            || (board[0][1] == symb1 && board[0][2] == symb1 && board[2][0] == ' ' && board[2][1] == ' ')
+            || (board[2][0] == symb1 && board[2][1] == symb1 && board[0][2] == ' ' && board[0][1] == ' ')
+            || (board[2][1] == symb1 && board[2][2] == symb1 && board[0][0] == ' ' && board[0][1] == ' ')
+            || (board[0][0] == symb1 && board[1][0] == symb1 && board[2][2] == ' ' && board[1][2] == ' ')
+            || (board[1][0] == symb1 && board[2][0] == symb1 && board[0][2] == ' ' && board[1][2] == ' ')
+            || (board[0][2] == symb1 && board[1][2] == symb1 && board[2][0] == ' ' && board[1][2] == ' ')
+            || (board[1][2] == symb1 && board[2][2] == symb1 && board[0][0] == ' ' && board[1][2] == ' ')) {
+          board[1][1] = symb1;
+          break;
+        }
+      }
+
+      // if symb1 is in the middle, check for wins on next turn
+      else if (board[1][1] == symb1) {
+        // check corners first
+        // top left
+        if (board[0][0] == symb1 && board[0][1] == ' ' && board[0][2] == ' ' && board[2][1] == ' ') {
+          board[0][1] = symb1;
+          break;
+        }
+        if (board[0][0] == symb1 && board[1][0] == ' ' && board[2][0] == ' ' && board[1][2] == ' ') {
+          board[1][0] = symb1;
+          break;
+        }
+        // top right
+        if (board[0][2] == symb1 && board[0][1] == ' ' && board[0][0] == ' ' && board[2][1] == ' ') {
+          board[0][1] = symb1;
+          break;
+        }
+        if (board[0][2] == symb1 && board[1][2] == ' ' && board[2][2] == ' ' && board[1][0] == ' ') {
+          board[1][2] = symb1;
+          break;
+        }
+        // bottom left
+        if (board[2][0] == symb1 && board[1][0] == ' ' && board[0][0] == ' ' && board[1][2] == ' ') {
+          board[1][0] = symb1;
+          break;
+        }
+        if (board[2][0] == symb1 && board[2][1] == ' ' && board[0][1] == ' ' && board[2][2] == ' ') {
+          board[2][1] = symb1;
+          break;
+        }
+        // bottom right
+        if (board[2][2] == symb1 && board[1][2] == ' ' && board[0][2] == ' ' && board[1][0] == ' ') {
+          board[1][2] = symb1;
+          break;
+        }
+        if (board[2][2] == symb1 && board[2][1] == ' ' && board[2][0] == ' ' && board[0][1] == ' ') {
+          board[2][1] = symb1;
+          break;
+        }
+      }
+
+      //select random positions
+      randomSeed(analogRead(A0));
+      int px = random(0, 3);
+      randomSeed(analogRead(A1));
+      int py = random(0, 3);
+      int attempt = 0;
+
+
+      // // rounds 2 and 3 try to line up two symbols
+      for (int i = 0; i < 3 && !found; i++) {
+        attempt = 0;
+        for (int j = 0; j < 3 && !found; j++) {
+          if (board[i][j] != symb1) {
+            continue;
+          }
+          Serial.print("i");
+          Serial.println(i);
+          Serial.print("j");
+          Serial.println(j);
+          Serial.print("px");
+          Serial.println(px);
+          Serial.print("py");
+          Serial.println(py);
+          while (!found) {
+            if (board[px][py] == ' ' &&
+                // same line play adjacent
+                ((abs(i - px) == 0 && abs(j - py) == 1 && ((board[i][0] == ' ' && board[i][1] == ' ') || (board[i][0] == ' ' && board[i][2] == ' ') || (board[i][1] == ' ' && board[i][2] == ' ')))
+                 // same row play adjacent
+                 || (abs(i - px) == 1 && abs(j - py) == 0 && ((board[0][j] == ' ' && board[1][j] == ' ') || (board[0][j] == ' ' && board[2][j] == ' ') || (board[1][j] == ' ' && board[2][j] == ' ')))
+                 //form diagonal adjacent
+                 || (abs(i - px) == 1 && abs(j - py) == 1 && px == 1 && py == 1)
+                 //play across board same line
+                 || (abs(i - px) == 0 && abs(j - py) == 2 && board[i][1] == ' ')
+                 //play across board same row
+                 || (abs(i - px) == 2 && abs(j - py) == 0 && board[1][j] == ' ')
+                 //play across board diagonal
+                 || (abs(i - px) == 2 && abs(j - py) == 2 && board[1][1] == ' '))) {
+              board[px][py] = symb1;
               found = true;
+
+            } else {
+              randomSeed(analogRead(A0));
+              px = random(0, 3);
+              randomSeed(analogRead(A1));
+              py = random(0, 3);
+              attempt++;
+              if (attempt == 10) {
+                break;
+              }
             }
           }
+        }
+      }
+      Serial.print("attempt ");
+
+      Serial.println(attempt);
+
+      // for round 1 and other random plays, like round 2 if the AI plays second
+      while (!found) {
+        if (board[px][py] == ' ') {
+          board[px][py] = symb1;
+          found = true;
+        } else {
+          randomSeed(analogRead(A0));
+          px = random(0, 3);
+          randomSeed(analogRead(A1));
+          py = random(0, 3);
         }
       }
     }
   }
   turn++;
 }
+
+//Functions
+//////////////////
+
+bool isVictory(char board[3][3]) {
+  if (
+    // horizontal
+    (board[0][0] != ' ' && board[0][0] == board[0][1] && board[0][1] == board[0][2]) ||  //
+    (board[1][0] != ' ' && board[1][0] == board[1][1] && board[1][1] == board[1][2]) ||  //
+    (board[2][1] != ' ' && board[2][0] == board[2][1] && board[2][1] == board[2][2]) ||  //
+    //vertical
+    (board[0][0] != ' ' && board[0][0] == board[1][0] && board[1][0] == board[2][0]) ||  //
+    (board[0][1] != ' ' && board[0][1] == board[1][1] && board[1][1] == board[2][1]) ||  //
+    (board[0][2] != ' ' && board[0][2] == board[1][2] && board[1][2] == board[2][2]) ||  //
+    //diagonal
+    (board[0][0] != ' ' && board[0][0] == board[1][1] && board[1][1] == board[2][2]) ||  //downward
+    (board[2][0] != ' ' && board[2][0] == board[1][1] && board[1][1] == board[0][2])) {  //upwards
+    return true;
+  }
+
+  return false;
+}
+
+// bool boardFull(char board[3][3]) {
+//   int count = 0;
+//   for (int i = 0; i < sizeof(board); i++) {
+//     for (int j = 0; j < sizeof(board); j++) {
+//       if (board[i][j] != ' ') count++;
+//     }
+//   }
+//   if (count == 9) return true;
+
+//   return false;
+// }
