@@ -1,9 +1,3 @@
-//missing features
-//turn win conditions into method
-//for ai to play OTHER plays
-//victory on last turn counts as draw
-//maybe have the player pick a game for 1 or 2 players and also have messages for when p1 wins or p2 wins
-
 /* AllProtocolsOnLCD.cpp
  *
  * Modified ReceiveDemo.cpp with additional 1602 LCD output.
